@@ -1,1 +1,1 @@
-Copias del repositorio de la app (svallev/una), commit 49da93ca1494af2aaf15ccfd91c182d449827002. No se editan aquí: npm run sync.
+Copias del repositorio de la app (svallev/una), commit 49da93ca1494af2aaf15ccfd91c182d449827002. No se editan aquí: node scripts/sync-from-app.mjs.

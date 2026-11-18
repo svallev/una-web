@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, test } from "node:test";
-import { build, defaultPaths, DOWNLOAD_ICON_PATH, fill, loadLandingStrings, LANDING_STRING_KEYS, readIdentity, tokensCss } from "../build.mjs";
+import { build, defaultPaths, DOWNLOAD_ICON_PATH, fill, loadLandingStrings, LANDING_STRING_KEYS, readIdentity, readTokens, tokensCss } from "../build.mjs";
 import { checkSite, mentionsName } from "../check.mjs";
 import { cloneWorld, edit, read, world } from "./support.mjs";
 import { iconPaths } from "../home/src/shared/icons.js";
@@ -424,8 +424,8 @@ describe("La construcción falla cerrada", () => {
   });
 });
 
-describe("tokens.css sale de shared/tokens.json", () => {
-  const tokens = JSON.parse(readFileSync(defaultPaths().tokens, "utf8"));
+describe("tokens.css sale de shared/tokens.json y web-tokens.json", () => {
+  const tokens = readTokens(defaultPaths());
   const css = tokensCss(tokens);
 
   test("los colores, tal cual", () => {
