@@ -95,7 +95,7 @@ describe("CA-023-14: las cabeceras de vercel.json", () => {
     }
     const cfg = JSON.parse(read(vercel(base)));
     assert.equal(cfg.framework, null);
-    assert.equal(cfg.buildCommand, "node build.mjs");
+    assert.equal(cfg.buildCommand, "node build.mjs && node check.mjs");
     assert.equal(cfg.outputDirectory, "dist");
     assert.equal(cfg.cleanUrls, true);
     assert.equal(cfg.trailingSlash, false);
@@ -161,7 +161,7 @@ describe("CA-023-14: las cabeceras de vercel.json", () => {
   fails("una cookie", (w) => setHeaders(w, (h) => [...h, { key: "Set-Cookie", value: "a=b" }]), /Set-Cookie|cookie/i);
   fails("con barra final", (w) => edit(vercel(w), (t) => t.replace('"trailingSlash": false', '"trailingSlash": true')), /trailingSlash/);
   fails("con un framework", (w) => edit(vercel(w), (t) => t.replace('"framework": null', '"framework": "nextjs"')), /framework/);
-  fails("otro comando de construcción", (w) => edit(vercel(w), (t) => t.replace('"node build.mjs"', '"npm run build"')), /buildCommand/);
+  fails("otro comando de construcción", (w) => edit(vercel(w), (t) => t.replace('"node build.mjs && node check.mjs"', '"node build.mjs"')), /buildCommand/);
   fails("otra carpeta de salida", (w) => edit(vercel(w), (t) => t.replace('"dist"', '"public"')), /outputDirectory/);
   fails("un vercel.json que no es JSON", (w) => writeFileSync(vercel(w), "{"), /vercel\.json.*no se puede leer/);
   fails("sin vercel.json", (w) => rmSync(vercel(w)), /vercel\.json: falta/);
@@ -316,8 +316,11 @@ describe("CA-027-04: sin programa nuevo y con las mismas guardias", () => {
   const licenses = (w) => join(w.dist, "licenses/index.html");
   const GROUP_OPEN = '<details class="group"><summary>';
 
-  test("CA-027-04: vercel.json (CSP incluida) es el de main antes de la 027", () => {
-    assert.deepEqual(JSON.parse(read(vercel(base))), JSON.parse(read(join(FIXTURES, "vercel-main.json"))));
+  test("CA-027-04: vercel.json (CSP incluida) es el de main antes de la 027, salvo la construcción que comprueba (ADR-0029)", () => {
+    const now = JSON.parse(read(vercel(base)));
+    const before = JSON.parse(read(join(FIXTURES, "vercel-main.json")));
+    assert.equal(now.buildCommand, "node build.mjs && node check.mjs");
+    assert.deepEqual({ ...now, buildCommand: before.buildCommand }, before);
     const value = headers(base).find((h) => h.key === "Content-Security-Policy").value;
     assert.equal(
       value,

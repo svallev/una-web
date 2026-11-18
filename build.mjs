@@ -139,10 +139,10 @@ export function readTokens(paths) {
 export function fillContact(text, identity, { markdown }) {
   const email = identity.contactEmail;
   if (!email) return text;
-  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+  if (!/^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
     throw new BuildError(`identity.yaml: «contactEmail» no es una dirección de correo válida: «${email}»`);
   }
-  return text.replace(/\[\s*(?:CONTACTO|CONTACT)\s*\]/g, markdown ? `[${email}](mailto:${email})` : email);
+  return text.replace(/\[\s*(?:CONTACTO|CONTACT)\s*\]/gi, markdown ? `[${email}](mailto:${email})` : email);
 }
 
 // ─── Markdown (subconjunto con falla cerrada) ────────────────────────────────────────────────────
@@ -1318,7 +1318,11 @@ export function build(paths = defaultPaths(), { env = process.env } = {}) {
   const { files } = renderSite(paths);
   const gaps = findGaps(files);
   const warnings = gaps.map((g) => `aviso: hueco de identidad ${g.gap} en ${g.file} (se rellena en F6)`);
-  if (env.UNA_RELEASE === "1" && gaps.length > 0) {
+  const release = env.UNA_RELEASE ?? "";
+  if (release !== "" && release !== "1") {
+    throw new BuildError(`UNA_RELEASE tiene que ser «1» o no estar definida (es «${release}»): no se adivina si es una publicación`);
+  }
+  if (release === "1" && gaps.length > 0) {
     throw new BuildError(
       `no se publica con huecos de identidad (UNA_RELEASE=1): ${gaps.map((g) => `${g.gap} en ${g.file}`).join("; ")}`,
     );

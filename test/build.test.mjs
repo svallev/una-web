@@ -683,3 +683,14 @@ describe("CA-027-07 (base): el fragmento de referencia de /licenses fuera del bl
     assert.equal(html.replace(noticesSection, ""), read(reference));
   });
 });
+
+describe("UNA_RELEASE (ADR-0029 de la app)", () => {
+  test("un valor que no es «1» ni vacío hace fallar la construcción", () => {
+    const w = cloneWorld(base);
+    try {
+      for (const v of ["true", "yes", "0", " 1"]) assert.throws(() => w.build({ UNA_RELEASE: v }), /UNA_RELEASE/, v);
+    } finally {
+      w.cleanup();
+    }
+  });
+});

@@ -19,6 +19,8 @@ test("fillContact: enlace en Markdown, texto suelto fuera, sin tocar los demás 
   assert.equal(fillContact("Contact: [CONTACT]", id, { markdown: false }), "Contact: hola@ejemplo.org");
   assert.equal(fillContact("Contacto: [CONTACTO]", {}, { markdown: false }), "Contacto: [CONTACTO]");
   assert.throws(() => fillContact("x", { contactEmail: "no es correo" }, { markdown: false }), /contactEmail/);
+  assert.throws(() => fillContact("x", { contactEmail: "a%0Ab@x.co" }, { markdown: false }), /contactEmail/);
+  assert.equal(fillContact("[Contacto]", id, { markdown: false }), "hola@ejemplo.org");
 });
 
 test("con contactEmail no queda el hueco del contacto en ninguna página y la comprobación pasa", () => {

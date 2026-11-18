@@ -998,7 +998,7 @@ function checkVercel(path, errors) {
   if (json.cleanUrls !== true) fail("cleanUrls tiene que ser true");
   if (json.trailingSlash !== false) fail("trailingSlash tiene que ser false");
   if (json.framework !== null) fail("framework tiene que ser null");
-  if (json.buildCommand !== "node build.mjs") fail('buildCommand tiene que ser "node build.mjs"');
+  if (json.buildCommand !== "node build.mjs && node check.mjs") fail('buildCommand tiene que ser "node build.mjs && node check.mjs" (Vercel no publica lo que no pasa la comprobación)');
   // Vercel instala como la CI: lo del lockfile, sin scripts de instalación (spec 025, plan §6.1).
   if (json.installCommand !== INSTALL_COMMAND) fail(`installCommand tiene que ser "${INSTALL_COMMAND}" (es ${JSON.stringify(json.installCommand)})`);
   if (json.outputDirectory !== "dist") fail('outputDirectory tiene que ser "dist"');
