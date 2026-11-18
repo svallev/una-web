@@ -1,5 +1,5 @@
 // Los textos de la página en español e inglés. Sin nada del navegador: lo usan la construcción
-// (`landing/build.mjs`, en el idioma por defecto) y el programa (en el que detecta `locale.js`).
+// (`build.mjs`, en el idioma por defecto) y el programa (en el que detecta `locale.js`).
 import es from './strings.es.json' with { type: 'json' };
 import en from './strings.en.json' with { type: 'json' };
 import { APP_NAME } from './config.js';

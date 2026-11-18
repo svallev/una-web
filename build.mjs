@@ -1,14 +1,14 @@
 // Construye la web de la app (spec 023, CA-023-03, 04, 13 a 17): la política de privacidad, las licencias de
 // terceros, la Ayuda y la página de error, en español e inglés en la misma dirección, sin dependencias y con solo el programa de idioma (ADR-0028); y, con
-// Vite, la página de inicio (spec 025, ADR-0027) desde `landing/home/`.
+// Vite, la página de inicio (spec 025, ADR-0027) desde `home/`.
 //
-//   npm ci --ignore-scripts      (una vez, en landing/)
-//   node landing/build.mjs       escribe landing/dist/
+//   npm ci --ignore-scripts      (una vez)
+//   node build.mjs       escribe dist/
 //
-// Las cuatro páginas usan solo módulos de Node (P11); Vite se carga solo para la de inicio. Lee `app/identity.yaml` (el nombre,
-// P7), `design/tokens.json` (colores, fuentes y medidas, P12), los títulos de las ARB, el texto de la
-// política (`docs/legal/privacy-policy.md`, la única copia, CA-023-04), el archivo de avisos de terceros
-// (`landing/third-party-notices.txt`, CA-023-16), el de la propia web (`landing/web-notices.txt`, CA-025-18) y `landing/src/` (textos y Ayuda). Falla cerrada:
+// Las cuatro páginas usan solo módulos de Node (P11); Vite se carga solo para la de inicio. Lee `identity.yaml` (el nombre,
+// P7), `shared/tokens.json` (colores, fuentes y medidas, P12), los títulos de las ARB, el texto de la
+// política (`shared/privacy-policy.md`, copia de la única fuente, que está en la app, CA-023-04), el archivo de avisos de terceros
+// (`third-party-notices.txt`, CA-023-16), el de la propia web (`web-notices.txt`, CA-025-18) y `src/` (textos y Ayuda). Falla cerrada:
 // lo que no entiende (Markdown fuera del subconjunto, un enlace raro, un `{…}` sin sustituir, una
 // clave que falta) detiene la construcción en lugar de publicar algo distinto de lo escrito.
 import {
@@ -26,19 +26,24 @@ export class BuildError extends Error {}
 export class MarkdownError extends BuildError {}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = resolve(HERE, "..");
+export const REPO_ROOT = HERE;
 
-/** Todas las rutas que usa la construcción; los tests las sustituyen por copias temporales. */
+/**
+ * Todas las rutas que usa la construcción; los tests las sustituyen por copias temporales. Lo que viene de la app
+ * (tokens, títulos de las ARB, política y fuentes) son copias en `shared/` que trae `node scripts/sync-from-app.mjs` (ADR-0029 de la app).
+ */
 export function defaultPaths(repoRoot = REPO_ROOT) {
-  const landingDir = join(repoRoot, "landing");
+  const landingDir = repoRoot;
+  const shared = join(repoRoot, "shared");
   return {
     repoRoot,
     landingDir,
-    identity: join(repoRoot, "app/identity.yaml"),
-    tokens: join(repoRoot, "design/tokens.json"),
-    arbEs: join(repoRoot, "app/lib/l10n/app_es.arb"),
-    arbEn: join(repoRoot, "app/lib/l10n/app_en.arb"),
-    policy: join(repoRoot, "docs/legal/privacy-policy.md"),
+    identity: join(repoRoot, "identity.yaml"),
+    tokens: join(shared, "tokens.json"),
+    webTokens: join(repoRoot, "web-tokens.json"),
+    arbEs: join(shared, "app_es.arb"),
+    arbEn: join(shared, "app_en.arb"),
+    policy: join(shared, "privacy-policy.md"),
     srcDir: join(landingDir, "src"),
     strings: join(landingDir, "src/strings.json"),
     siteCss: join(landingDir, "src/site.css"),
@@ -49,7 +54,7 @@ export function defaultPaths(repoRoot = REPO_ROOT) {
     webNotices: join(landingDir, "web-notices.txt"),
     buildFile: join(landingDir, "build.mjs"),
     vercelJson: join(landingDir, "vercel.json"),
-    fontsDir: join(repoRoot, "app/assets/fonts"),
+    fontsDir: join(shared, "fonts"),
     homeDir: join(landingDir, "home"),
     out: join(landingDir, "dist"),
   };
@@ -110,6 +115,34 @@ export function readIdentity(text, label = "identity.yaml") {
     if (!out[key]) throw new BuildError(`${label}: falta «${key}»`);
   }
   return out;
+}
+
+/**
+ * Los tokens de la app (`shared/tokens.json`) con los de la web (`web-tokens.json`) encima, grupo a grupo:
+ * si una clave está en los dos, gana la de la web.
+ */
+export function readTokens(paths) {
+  const app = JSON.parse(readText(paths.tokens, "tokens.json"));
+  const web = JSON.parse(readText(paths.webTokens, "web-tokens.json"));
+  for (const [group, value] of Object.entries(web)) {
+    if (group.startsWith("$")) continue;
+    app[group] = { ...(app[group] ?? {}), ...value };
+  }
+  return app;
+}
+
+/**
+ * El hueco del contacto (`[CONTACTO]` / `[CONTACT]`) relleno con `contactEmail` de `identity.yaml`, si lo hay
+ * (ADR-0029 de la app: lo que hay en `main` es lo que se publica). En Markdown va como enlace `mailto:`; en
+ * los textos sueltos (`strings.json`), tal cual. Los demás huecos no se tocan.
+ */
+export function fillContact(text, identity, { markdown }) {
+  const email = identity.contactEmail;
+  if (!email) return text;
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+    throw new BuildError(`identity.yaml: «contactEmail» no es una dirección de correo válida: «${email}»`);
+  }
+  return text.replace(/\[\s*(?:CONTACTO|CONTACT)\s*\]/g, markdown ? `[${email}](mailto:${email})` : email);
 }
 
 // ─── Markdown (subconjunto con falla cerrada) ────────────────────────────────────────────────────
@@ -822,7 +855,7 @@ export function assertNoticesRoundTrip(body, parsed, label = "third-party-notice
 }
 
 /**
- * Los avisos del código de terceros de la propia web (spec 025, CA-025-18): `landing/web-notices.txt`, escrito a
+ * Los avisos del código de terceros de la propia web (spec 025, CA-025-18): `web-notices.txt`, escrito a
  * mano, en inglés. Empieza por «Third-party code in this website» y nombra cada paquete que va al navegador en
  * una línea `Package: <nombre> <versión>` (los tests la cruzan con `package.json`). Devuelve `{ body, packages }`.
  */
@@ -892,7 +925,7 @@ export function loadStrings(text, label = "strings.json") {
 
 /**
  * Los textos de la landing que usan la cabecera y el pie de las cuatro páginas (spec 026, plan §1.5): una sola
- * fuente, `landing/home/src/shared/strings.{es,en}.json`, sin copia en `strings.json`.
+ * fuente, `home/src/shared/strings.{es,en}.json`, sin copia en `strings.json`.
  */
 export const LANDING_STRING_KEYS = ["nav.home", "nav.download", "nav.lang", "footer.help", "footer.privacy", "footer.licenses", "footer.legal", "footer.nav"];
 
@@ -952,7 +985,7 @@ export const FONT_FILES = [
 export const FONT_DIRS = [...new Set(FONT_FILES.map((f) => f.dir))];
 
 /**
- * `tokens.css`: las variables de `design/tokens.json` (rem para texto y espacios) y las fuentes (las cuatro
+ * `tokens.css`: las variables de `shared/tokens.json` (rem para texto y espacios) y las fuentes (las cuatro
  * páginas de contenido, sin dependencias; la de inicio trae sus propios estilos, los de la maqueta).
  */
 export function tokensCss(tokens) {
@@ -983,7 +1016,7 @@ export function tokensCss(tokens) {
     ].join("\n");
   });
   return [
-    "/* Generado por landing/build.mjs desde design/tokens.json. No editar a mano. */",
+    "/* Generado por build.mjs desde shared/tokens.json. No editar a mano. */",
     ...faces,
     ":root {",
     ...vars,
@@ -1028,8 +1061,8 @@ ${chrome.footer}
 
 function loadSite(paths) {
   const identity = readIdentity(readText(paths.identity, "identity.yaml"), basename(paths.identity));
-  const strings = loadStrings(readText(paths.strings, "strings.json"), basename(paths.strings));
-  const tokens = JSON.parse(readText(paths.tokens, "tokens.json"));
+  const strings = loadStrings(fillContact(readText(paths.strings, "strings.json"), identity, { markdown: false }), basename(paths.strings));
+  const tokens = readTokens(paths);
   // La cabecera y el pie (spec 026): se leen ya aquí para que un texto que falta haga fallar la construcción.
   const landing = loadLandingStrings(paths, identity.displayName);
   const arb = {};
@@ -1186,10 +1219,10 @@ export function renderSite(paths, { parseBody = parseNoticesBody } = {}) {
     files.set(file, shell({ ...spec, chrome: chrome(file, site) }));
   };
 
-  // La página de inicio ya no sale de aquí: la construye Vite desde `landing/home/` (spec 025, `buildHome`).
+  // La página de inicio ya no sale de aquí: la construye Vite desde `home/` (spec 025, `buildHome`).
 
-  // Política: el texto es el de docs/legal/privacy-policy.md (CA-023-04).
-  const policy = policyFragments(readText(paths.policy, "privacy-policy.md"), name, s);
+  // Política: el texto es el de shared/privacy-policy.md, copia de la de la app (CA-023-04).
+  const policy = policyFragments(fillContact(readText(paths.policy, "privacy-policy.md"), identity, { markdown: true }), name, s);
   page("privacy/index.html", {
     ...pageTitles(s, name, arb.es.privacy, arb.en.privacy),
     h1: bilingualH1(arb.es.privacy, arb.en.privacy),
@@ -1241,10 +1274,10 @@ export function renderSite(paths, { parseBody = parseNoticesBody } = {}) {
   });
   files.set(NOTICES_FILE, noticesText);
 
-  // Ayuda (CA-023-17): los textos de landing/src/help.{es,en}.md.
+  // Ayuda (CA-023-17): los textos de src/help.{es,en}.md.
   const help = {
-    es: helpFragment(readText(paths.helpEs, "help.es.md"), name, "es", "help.es.md", s),
-    en: helpFragment(readText(paths.helpEn, "help.en.md"), name, "en", "help.en.md", s),
+    es: helpFragment(fillContact(readText(paths.helpEs, "help.es.md"), identity, { markdown: true }), name, "es", "help.es.md", s),
+    en: helpFragment(fillContact(readText(paths.helpEn, "help.en.md"), identity, { markdown: true }), name, "en", "help.en.md", s),
   };
   page("help/index.html", {
     ...pageTitles(s, name, arb.es.help, arb.en.help),
@@ -1274,9 +1307,9 @@ function findGaps(files) {
 }
 
 /**
- * Construye la web en `paths.out`. Con `VERCEL_ENV=production` un hueco de identidad hace fallar la
- * construcción (así la integración Git de Vercel no puede publicar una web a medias); en cualquier
- * otro entorno es un aviso. Devuelve los avisos.
+ * Construye la web en `paths.out`. Con `UNA_RELEASE=1` (la variable que se define en Vercel al publicar de verdad,
+ * en F6) un hueco de identidad hace fallar la construcción; sin ella es un aviso, también en la producción de
+ * Vercel, que hasta F6 es una web de pruebas (ADR-0029 de la app, enmienda de la spec 023). Devuelve los avisos.
  */
 export function build(paths = defaultPaths(), { env = process.env } = {}) {
   if (basename(paths.out) !== "dist") {
@@ -1285,9 +1318,9 @@ export function build(paths = defaultPaths(), { env = process.env } = {}) {
   const { files } = renderSite(paths);
   const gaps = findGaps(files);
   const warnings = gaps.map((g) => `aviso: hueco de identidad ${g.gap} en ${g.file} (se rellena en F6)`);
-  if (env.VERCEL_ENV === "production" && gaps.length > 0) {
+  if (env.UNA_RELEASE === "1" && gaps.length > 0) {
     throw new BuildError(
-      `no se publica con huecos de identidad (VERCEL_ENV=production): ${gaps.map((g) => `${g.gap} en ${g.file}`).join("; ")}`,
+      `no se publica con huecos de identidad (UNA_RELEASE=1): ${gaps.map((g) => `${g.gap} en ${g.file}`).join("; ")}`,
     );
   }
 
@@ -1317,7 +1350,7 @@ export function build(paths = defaultPaths(), { env = process.env } = {}) {
 
 // ─── La página de inicio (spec 025) ──────────────────────────────────────────────────────────────
 
-/** La carpeta de lo generado para Vite (fuera de git): `landing/home/gen/`. */
+/** La carpeta de lo generado para Vite (fuera de git): `home/gen/`. */
 export const homeGenDir = (paths) => join(paths.homeDir, "gen");
 
 /**
@@ -1370,7 +1403,7 @@ export function homeSite(paths) {
   };
 }
 
-/** Escribe `landing/home/gen/site.json` (lo único que Vite necesita generado). Devuelve la lista de archivos. */
+/** Escribe `home/gen/site.json` (lo único que Vite necesita generado). Devuelve la lista de archivos. */
 export function writeHomeGen(paths = defaultPaths()) {
   const gen = homeGenDir(paths);
   rmSync(gen, { recursive: true, force: true });
@@ -1381,8 +1414,8 @@ export function writeHomeGen(paths = defaultPaths()) {
 
 /**
  * Construye la página de inicio con Vite (por su API) dentro de `paths.out`, después de `build`, que ya vació
- * la carpeta y escribió las otras cuatro páginas. La configuración es la de `landing/home/vite.config.mjs`,
- * que escribe en `landing/home/../dist`: tiene que ser `paths.out`.
+ * la carpeta y escribió las otras cuatro páginas. La configuración es la de `home/vite.config.mjs`,
+ * que escribe en `home/../dist`: tiene que ser `paths.out`.
  */
 export async function buildHome(paths = defaultPaths()) {
   if (resolve(paths.homeDir, "..", "dist") !== resolve(paths.out)) {
@@ -1393,7 +1426,7 @@ export async function buildHome(paths = defaultPaths()) {
   try {
     vite = await import("vite");
   } catch (e) {
-    throw new BuildError(`no se puede cargar Vite (¿falta «npm ci --ignore-scripts» en landing/?): ${e.message}`);
+    throw new BuildError(`no se puede cargar Vite (¿falta «npm ci --ignore-scripts» en esta carpeta?): ${e.message}`);
   }
   const config = (await import(pathToFileURL(join(paths.homeDir, "vite.config.mjs")).href)).default;
   await vite.build({ ...config, configFile: false });
@@ -1401,13 +1434,13 @@ export async function buildHome(paths = defaultPaths()) {
   writeFileSync(index, await fillHomePage(readFileSync(index, "utf8"), paths));
 }
 
-/** La marca de `landing/home/index.html` donde va la página entera. */
+/** La marca de `home/index.html` donde va la página entera. */
 export const HOME_PAGE_MARK = "<!-- page -->";
 
 /**
  * Escribe en el `index.html` que deja Vite la página entera en el idioma por defecto (cabecera, las siete
  * escenas y el pie) y su idioma, título y descripción, con los mismos constructores que usa el programa
- * (`landing/home/src/a/page.js`): sin JavaScript se ve la versión apilada; con él, el programa la anima.
+ * (`home/src/a/page.js`): sin JavaScript se ve la versión apilada; con él, el programa la anima.
  * Necesita `gen/site.json` (`writeHomeGen`).
  */
 export async function fillHomePage(html, paths = defaultPaths()) {
@@ -1422,7 +1455,7 @@ export async function fillHomePage(html, paths = defaultPaths()) {
       n += 1;
       return replacement;
     });
-    if (n !== 1) throw new BuildError(`landing/home/index.html: tiene que haber un(a) ${what} y hay ${n}`);
+    if (n !== 1) throw new BuildError(`home/index.html: tiene que haber un(a) ${what} y hay ${n}`);
     return out;
   };
   let out = once(html, /<html lang="[^"]*">/g, `<html lang="${esc(meta.lang)}">`, '<html lang="…">');
@@ -1436,7 +1469,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const { warnings, files } = build();
     for (const w of warnings) console.warn(w);
     await buildHome();
-    console.log(`Web construida en landing/dist (${files.length} archivos y la página de inicio).`);
+    console.log(`Web construida en dist (${files.length} archivos y la página de inicio).`);
   } catch (e) {
     if (!(e instanceof BuildError)) throw e;
     console.error(`error: ${e.message}`);

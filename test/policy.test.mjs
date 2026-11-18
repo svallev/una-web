@@ -227,7 +227,7 @@ describe("CA-023-04: una sola fuente para la política", () => {
   });
 });
 
-test("CA-023-04: la copia de la política no existe en landing/ (una sola fuente)", () => {
+test("CA-023-04: la copia de la política no existe en la web (una sola fuente)", () => {
   const src = readFileSync(join(base.paths.landingDir, "build.mjs"), "utf8");
   assert.ok(!src.includes("En pocas palabras"), "el texto de la política está copiado en build.mjs");
 });

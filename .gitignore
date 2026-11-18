@@ -1,0 +1,9 @@
+node_modules/
+# Lo que construye build.mjs
+dist/
+# Lo que build.mjs genera para Vite (nombre, tokens, la página con el contenido)
+home/gen/
+.vercel
+.DS_Store
+.env*
+.claude/settings.local.json

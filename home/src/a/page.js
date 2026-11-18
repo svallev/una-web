@@ -1,5 +1,5 @@
 // El HTML de la página entera (cabecera, las siete escenas con el pie y la pista de scroll) en el idioma de
-// `i18n.js`. Lo usan la construcción (`landing/build.mjs` lo escribe en `index.html`: sin JavaScript se ve la
+// `i18n.js`. Lo usan la construcción (`build.mjs` lo escribe en `index.html`: sin JavaScript se ve la
 // versión apilada) y el programa (`main.js`, si el idioma es otro). Sin nada del navegador.
 import { t, lang } from '../shared/i18n.js';
 import { SCENES, NOTE } from '../shared/story.js';

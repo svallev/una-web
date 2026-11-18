@@ -28,7 +28,7 @@ describe("CA-023-16: el archivo de avisos del repositorio", () => {
   const real = defaultPaths().notices;
 
   test("existe y empieza por una cabecera válida (la compilación de main o una versión)", () => {
-    assert.ok(existsSync(real), "falta landing/third-party-notices.txt");
+    assert.ok(existsSync(real), "falta third-party-notices.txt");
     const parsed = parseNotices(readFileSync(real, "utf8"));
     assert.ok(["build", "version"].includes(parsed.kind));
     if (parsed.kind === "build") {
@@ -836,7 +836,7 @@ describe("CA-027-01, 02, 03 y 08: el bloque de avisos en grupos (archivo real)",
 });
 
 describe("CA-027-07: el archivo de texto, byte a byte", () => {
-  test("dist/third-party-notices.txt es el de landing/, también con saltos de línea de Windows", () => {
+  test("dist/third-party-notices.txt es el de la raíz, también con saltos de línea de Windows", () => {
     const crlf = fakeNotices(HEADER_BUILD, GROUPED_BODY.replaceAll("\n", "\r\n")); // la cabecera no admite \r
     const { w } = withNotices(crlf);
     try {
@@ -964,7 +964,7 @@ describe("CA-027-04: las guardias miran el nombre de los grupos (no el texto de 
     const { w, result } = withNotices(text);
     try {
       assert.ok(result.warnings.some((m) => m.includes("[DATE]") && m.includes("licenses/index.html")), result.warnings.join("\n"));
-      assert.throws(() => build(w.paths, { env: { VERCEL_ENV: "production" } }), /\[DATE\] en licenses\/index\.html/);
+      assert.throws(() => build(w.paths, { env: { UNA_RELEASE: "1" } }), /\[DATE\] en licenses\/index\.html/);
     } finally {
       w.cleanup();
     }

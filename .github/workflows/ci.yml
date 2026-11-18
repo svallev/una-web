@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web
+    # Construir, comprobar y probar. Sin despliegue ni secretos: Vercel despliega con su integración de Git.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Dependencias (solo lo que fija package-lock.json, sin scripts de instalación)
+        run: npm ci --ignore-scripts
+      - name: Construir la web
+        run: node build.mjs
+      - name: Comprobar la web (HTML, contraste, enlaces, textos, dist al día)
+        run: node check.mjs
+      - name: Tests de Node
+        # Los archivos van con el glob de la shell: en Node 24 `node --test test` falla. Falla cerrada: si la
+        # salida no trae el recuento, o es menor que el mínimo, el paso falla.
+        run: |
+          set -euo pipefail
+          min=900
+          node --test --test-reporter=tap test/*.test.mjs | tee "$RUNNER_TEMP/node-tests.txt"
+          n="$(sed -nE 's/^# tests ([0-9]+)$/\1/p' "$RUNNER_TEMP/node-tests.txt" | tail -n 1)"
+          if [ -z "$n" ] || [ "$n" -lt "$min" ]; then
+            echo "::error::Se esperaban al menos $min tests y se contaron '${n:-ninguno}'"
+            exit 1
+          fi
+          echo "Tests: $n (mínimo $min)"

@@ -1,8 +1,8 @@
-// Servidor local de la web (spec 023, casillas C-023-2 a 4; spec 025): sirve `landing/dist/` con las mismas
+// Servidor local de la web (spec 023, casillas C-023-2 a 4; spec 025): sirve `dist/` con las mismas
 // cabeceras de `vercel.json` (por ruta: «/» lleva la CSP de la página de inicio) y las reglas de
 // `cleanUrls` / `404.html`, sin desplegar nada.
 //
-//   node landing/serve.mjs [--port 4173]      (después de `node landing/build.mjs`)
+//   node serve.mjs [--port 4173]      (después de `node build.mjs`)
 //
 // Solo módulos de Node. Escucha únicamente en 127.0.0.1; rechaza un `Host` que no sea el suyo
 // (DNS rebinding), todo método que no sea GET o HEAD y cualquier ruta que salga de `dist/`
@@ -124,6 +124,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const paths = defaultPaths();
   const server = createLandingServer({ dist: paths.out, vercelJson: paths.vercelJson });
   server.listen(port, "127.0.0.1", () => {
-    console.log(`Sirviendo landing/dist en http://127.0.0.1:${server.address().port}/ (Ctrl+C para parar)`);
+    console.log(`Sirviendo dist en http://127.0.0.1:${server.address().port}/ (Ctrl+C para parar)`);
   });
 }

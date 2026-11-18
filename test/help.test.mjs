@@ -174,7 +174,7 @@ describe("CA-023-17: la página de Ayuda", () => {
     assert.ok(warnings.some((m) => m.includes("help/index.html") && m.includes("[CONTACT]")));
   });
 
-  test("con VERCEL_ENV=production un hueco en la Ayuda hace fallar aunque todo lo demás esté relleno", () => {
+  test("con UNA_RELEASE=1 un hueco en la Ayuda hace fallar aunque todo lo demás esté relleno", () => {
     const w = cloneWorld(base);
     try {
       edit(w.paths.policy, (t) =>
@@ -188,12 +188,12 @@ describe("CA-023-17: la página de Ayuda", () => {
       );
       edit(w.paths.strings, (t) => t.replace("[CONTACTO]", "ana@ejemplo.org").replace("[CONTACT]", "ana@ejemplo.org"));
       assert.throws(
-        () => build(w.paths, { env: { VERCEL_ENV: "production" } }),
+        () => build(w.paths, { env: { UNA_RELEASE: "1" } }),
         (e) => /\[CONTACTO\] en help\/index\.html/.test(e.message) && !/privacy|404|licenses/.test(e.message),
       );
       edit(w.paths.helpEs, (t) => t.replaceAll("[CONTACTO]", "ana@ejemplo.org"));
       edit(w.paths.helpEn, (t) => t.replaceAll("[CONTACT]", "ana@ejemplo.org"));
-      assert.deepEqual(build(w.paths, { env: { VERCEL_ENV: "production" } }).warnings, []);
+      assert.deepEqual(build(w.paths, { env: { UNA_RELEASE: "1" } }).warnings, []);
     } finally {
       w.cleanup();
     }

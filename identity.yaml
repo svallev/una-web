@@ -1,0 +1,14 @@
+# Identidad de la web. El nombre y el logotipo son los de la app (`app/identity.yaml` de svallev/una, P7):
+# `node scripts/sync-from-app.mjs` falla si no coinciden. No escribas el nombre en ningún otro sitio de la web.
+displayName: "Una"    # nombre de la app
+wordmark: "una."      # logotipo
+
+# Fichas de las tiendas (spec 025, CA-025-08): las enlaza la página de inicio. Vacías ("") hasta que exista
+# cada ficha (F6): sin dirección, el rótulo de la tienda no es un enlace y la web dice «Muy pronto». Solo
+# `https://` con el anfitrión exacto de su tienda; `build.mjs` rechaza lo demás.
+appStoreUrl: ""      # https://apps.apple.com/…
+googlePlayUrl: ""    # https://play.google.com/…
+
+# Contacto que se publica (ADR-0029 de la app, decisión del propietario del 2026-11-18): rellena el hueco
+# [CONTACTO] / [CONTACT] de la política, la Ayuda y el pie. Sin esta línea, el hueco se queda como aviso.
+contactEmail: "salvador.valle@gmail.com"

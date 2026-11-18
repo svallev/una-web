@@ -5,11 +5,11 @@
 // puede usar, su tamaño y la CSP con Trusted Types); y, con su propio juego de reglas (`checkHome`), la página de
 // inicio de la spec 025 (CA-025-12). Falla cerrada: lo que no entiende es un error.
 //
-//   node landing/check.mjs [--dist <carpeta>]      (después de `node landing/build.mjs`)
+//   node check.mjs [--dist <carpeta>]      (después de `node build.mjs`)
 //
 // Solo módulos de Node. `checkSite` (las cuatro páginas, su programa de idioma y `vercel.json`) y `checkHome` (la
 // de inicio) devuelven la lista de errores (vacía si todo está bien) para poder probar cada regla con un caso
-// que falla (`landing/test`).
+// que falla (`test`).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -23,10 +23,12 @@ import {
   LANG_FILE,
   LANG_SCRIPT,
   defaultPaths,
+  fillContact,
   kebab,
   loadStrings,
   policyFragments,
   readIdentity,
+  readTokens,
   renderSite,
 } from "./build.mjs";
 
@@ -570,8 +572,9 @@ const escapeText = (s) =>
 function checkPolicy(paths, dist, name, errors) {
   const file = "privacy/index.html";
   const html = readFileSync(join(dist, file), "utf8");
-  const strings = loadStrings(readFileSync(paths.strings, "utf8"));
-  const expected = policyFragments(readFileSync(paths.policy, "utf8"), name, strings);
+  const identity = readIdentity(readFileSync(paths.identity, "utf8"));
+  const strings = loadStrings(fillContact(readFileSync(paths.strings, "utf8"), identity, { markdown: false }));
+  const expected = policyFragments(fillContact(readFileSync(paths.policy, "utf8"), identity, { markdown: true }), name, strings);
   for (const lang of ["es", "en"]) {
     const m = new RegExp(`<section class="half" lang="${lang}" data-l="${lang}" aria-labelledby="${lang}">\\n([\\s\\S]*?)\\n</section>`).exec(html);
     if (!m) {
@@ -579,7 +582,7 @@ function checkPolicy(paths, dist, name, errors) {
       continue;
     }
     if (m[1] !== expected[lang].html) {
-      errors.push(`${file}: el texto publicado de la política (${lang}) no es el de docs/legal/privacy-policy.md`);
+      errors.push(`${file}: el texto publicado de la política (${lang}) no es el de shared/privacy-policy.md`);
     }
   }
 }
@@ -1138,7 +1141,7 @@ function checkHandWrittenName(paths, identity, errors) {
     readFileSync(file, "utf8").split("\n").forEach((line, i) => {
       for (const name of [identity.displayName, identity.wordmark]) {
         if (mentionsName(line, name)) {
-          errors.push(`landing/${rel}:${i + 1}: el nombre de la app «${name}» está escrito a mano (sale de app/identity.yaml, P7)`);
+          errors.push(`${rel}:${i + 1}: el nombre de la app «${name}» está escrito a mano (sale de identity.yaml, P7)`);
         }
       }
     });
@@ -1193,7 +1196,7 @@ export function checkHome(paths = defaultPaths(), { dist = paths.out } = {}) {
   const found = existsSync(dist) ? filesOf(dist) : [];
   for (const f of found) if (f.endsWith(".map")) errors.push(`${f}: mapa de código en la web publicada (CA-025-12)`);
   if (!found.includes(HOME_PAGE)) {
-    errors.push(`${HOME_PAGE}: falta la página de inicio (¿se ejecutó landing/build.mjs?)`);
+    errors.push(`${HOME_PAGE}: falta la página de inicio (¿se ejecutó build.mjs?)`);
     return errors;
   }
   const html = readFileSync(join(dist, HOME_PAGE), "utf8");
@@ -1352,13 +1355,13 @@ export function checkSite(paths = defaultPaths(), { dist = paths.out } = {}) {
   for (const d of FONT_DIRS) needed.push(`fonts/${d}/OFL.txt`);
   for (const f of FONT_FILES) needed.push(`fonts/${f.dir}/${f.file}`);
   const missing = new Set(needed.filter((f) => !existsSync(join(dist, f))));
-  for (const f of missing) errors.push(`${f}: falta en ${relative(paths.repoRoot, dist) || dist} (¿se ejecutó landing/build.mjs?)`);
+  for (const f of missing) errors.push(`${f}: falta en ${relative(paths.repoRoot, dist) || dist} (¿se ejecutó build.mjs?)`);
 
   // Que lo publicado sea lo que construyen las fuentes.
   for (const [file, expected] of site.files) {
     if (missing.has(file)) continue;
     if (readFileSync(join(dist, file), "utf8") !== expected) {
-      errors.push(`${file}: no coincide con lo que construye la web desde sus fuentes (¿falta ejecutar landing/build.mjs?)`);
+      errors.push(`${file}: no coincide con lo que construye la web desde sus fuentes (¿falta ejecutar build.mjs?)`);
     }
   }
 
@@ -1377,7 +1380,7 @@ export function checkSite(paths = defaultPaths(), { dist = paths.out } = {}) {
   // CSS.
   if (!missing.has("tokens.css") && !missing.has("site.css")) {
     const tokensText = readFileSync(join(dist, "tokens.css"), "utf8");
-    const tokens = JSON.parse(readFileSync(paths.tokens, "utf8"));
+    const tokens = readTokens(paths);
     const varValues = new Map([...tokensText.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gm)].map((m) => [m[1], m[2].trim()]));
     const definedVars = new Set(varValues.keys());
     const ctx = { tokens, definedVars, varValues };

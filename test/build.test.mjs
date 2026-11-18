@@ -230,7 +230,7 @@ describe("CA-023-13: el nombre sale de la identidad", () => {
     }
   });
 
-  test("el nombre escrito a mano en landing/src hace fallar la comprobación", () => {
+  test("el nombre escrito a mano en src hace fallar la comprobación", () => {
     for (const value of [name, readIdentity(read(base.paths.identity)).wordmark]) {
       const w = cloneWorld(base);
       try {
@@ -287,7 +287,7 @@ describe("CA-023-13: el nombre sale de la identidad", () => {
 });
 
 describe("Plan §1.3: huecos de identidad al publicar", () => {
-  test("sin VERCEL_ENV los huecos son avisos y la construcción sigue", () => {
+  test("sin UNA_RELEASE los huecos son avisos y la construcción sigue", () => {
     const w = cloneWorld(base);
     try {
       const r = w.build({});
@@ -300,25 +300,25 @@ describe("Plan §1.3: huecos de identidad al publicar", () => {
     }
   });
 
-  test("en una vista previa (VERCEL_ENV=preview) también son avisos", () => {
+  test("en la producción de Vercel sin UNA_RELEASE (VERCEL_ENV=production) también son avisos", () => {
     const w = cloneWorld(base);
     try {
-      assert.ok(w.build({ VERCEL_ENV: "preview" }).warnings.length >= 1);
+      assert.ok(w.build({ VERCEL_ENV: "production" }).warnings.length >= 1);
     } finally {
       w.cleanup();
     }
   });
 
-  test("con VERCEL_ENV=production un hueco hace fallar y dice cuál", () => {
+  test("con UNA_RELEASE=1 un hueco hace fallar y dice cuál", () => {
     const w = cloneWorld(base);
     try {
-      assert.throws(() => w.build({ VERCEL_ENV: "production" }), /\[CONTACTO\]|\[RESPONSABLE\]|\[FECHA\]/);
+      assert.throws(() => w.build({ UNA_RELEASE: "1" }), /\[CONTACTO\]|\[RESPONSABLE\]|\[FECHA\]/);
     } finally {
       w.cleanup();
     }
   });
 
-  test("con VERCEL_ENV=production y todos los huecos rellenos, construye", () => {
+  test("con UNA_RELEASE=1 y todos los huecos rellenos, construye", () => {
     const w = cloneWorld(base);
     try {
       edit(w.paths.policy, (t) =>
@@ -333,7 +333,7 @@ describe("Plan §1.3: huecos de identidad al publicar", () => {
       edit(w.paths.strings, (t) => t.replace("[CONTACTO]", "hola@ejemplo.org").replace("[CONTACT]", "hola@ejemplo.org"));
       edit(w.paths.helpEs, (t) => t.replaceAll("[CONTACTO]", "hola@ejemplo.org"));
       edit(w.paths.helpEn, (t) => t.replaceAll("[CONTACT]", "hola@ejemplo.org"));
-      const r = w.build({ VERCEL_ENV: "production" });
+      const r = w.build({ UNA_RELEASE: "1" });
       assert.deepEqual(r.warnings, []);
       assert.ok(read(join(w.dist, "404.html")).includes("Contacto: hola@ejemplo.org"));
     } finally {
@@ -424,7 +424,7 @@ describe("La construcción falla cerrada", () => {
   });
 });
 
-describe("tokens.css sale de design/tokens.json", () => {
+describe("tokens.css sale de shared/tokens.json", () => {
   const tokens = JSON.parse(readFileSync(defaultPaths().tokens, "utf8"));
   const css = tokensCss(tokens);
 
@@ -558,7 +558,7 @@ describe("CA-026-13 y 15: el programa de idioma en la web", () => {
 
   test("CA-026-15: dist/lang.js es el fuente tal cual (byte a byte) y no pasa de 10 KB", () => {
     const built = readFileSync(join(base.dist, "lang.js"));
-    assert.ok(built.equals(readFileSync(source())), "dist/lang.js no es igual a landing/src/lang.js");
+    assert.ok(built.equals(readFileSync(source())), "dist/lang.js no es igual a src/lang.js");
     assert.ok(built.length <= 10_240, `lang.js pesa ${built.length} bytes`);
   });
 
