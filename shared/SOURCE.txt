@@ -1,1 +1,1 @@
-Copias del repositorio de la app (svallev/una), commit d461e69e543463b79a2e32bdba0c08b9c2931af7 (rama chore/web-a-repo-aparte). No se editan aquí: node scripts/sync-from-app.mjs.
+Copias del repositorio de la app (svallev/una), commit 35d071a17792f08610e7f65434fa5b504e7e510f (rama main). No se editan aquí: node scripts/sync-from-app.mjs.
